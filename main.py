@@ -9,7 +9,7 @@ API_HASH = ''
 
 BOYS_ID = 1231044699
 
-FEED_TOAD_PERIOD = timedelta(hours=8, minutes=2)
+FEED_TOAD_PERIOD = timedelta(hours=12, minutes=2)
 DEALER_JOB_PERIOD = timedelta(hours=8, minutes=5)
 TOAD_OF_THE_DAY_PERIOD = timedelta(days=1)
 
