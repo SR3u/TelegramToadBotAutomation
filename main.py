@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 
 from telethon import TelegramClient
+from telethon import functions
 
 # Get it from https://my.telegram.org/
 API_ID = ''
@@ -35,48 +36,67 @@ MESSAGES_LIMIT = 100
 client = TelegramClient('session_name', API_ID, API_HASH)
 
 
-def prepare_message(time, message, key, state, delay=timedelta(hours=1)):
-    messages = []
-    next_time = toad_state[key] + delay
+async def prepare_message(scheduled_messages, message, delay=timedelta(hours=1), time=None):
+    sch_msgs = list(filter(lambda msg: msg.message == message, scheduled_messages))
+    next_time = datetime.now()
+    if len(sch_msgs) > 0:
+        next_time = sch_msgs[-1].date + delay
+    if time is None:
+        time = datetime.now()
     if time >= next_time:
-        messages.append({'msg': message, 'time': time})
-        toad_state[key] = time + delay
-    return messages
+        return [{'msg': message, 'time': time}]
+    return []
 
 
-def do_the_job():
+async def do_the_job(entity, scheduled_messages):
     messages = []
     # Job (dealer)
-    time = datetime.today() + timedelta(minutes=2)
-    job_messages = prepare_message(time, 'работа крупье', 'job', toad_state, DEALER_JOB_PERIOD)
+    # time = datetime.today() + timedelta(minutes=2)
+    job_messages = await prepare_message(scheduled_messages, 'работа крупье', DEALER_JOB_PERIOD)
     if len(job_messages) > 0:
-        job_messages.append({'msg': 'завершить работу', 'time': time + timedelta(hours=2, minutes=1)})
+        job_end_time = job_messages[0].get('time') + timedelta(hours=2, minutes=1)
+        job_messages.append(messages.append({'msg': 'завершить работу', 'time': job_end_time}))
+
     messages.extend(job_messages)
-    with client:
-        client.loop.run_until_complete(send_messages(messages))
+    await send_messages(entity, messages)
 
 
-def feed_the_toad():
+async def feed_the_toad(entity, scheduled_messages):
     messages = []
     # Feed the toad
-    time = datetime.today() + timedelta(minutes=2)
-    messages.extend(prepare_message(time, 'покормить жабу', 'feed', toad_state, FEED_TOAD_PERIOD))
-    with client:
-        client.loop.run_until_complete(send_messages(messages))
+    # time = datetime.today() + timedelta(minutes=2)
+    messages.extend(await prepare_message(scheduled_messages, 'покормить жабу', FEED_TOAD_PERIOD))
+    await send_messages(entity, messages)
 
 
-async def send_messages(messages):
+async def send_messages(entity, messages):
+    messages = list(filter(lambda o: o is not None, messages))
     sorted_messages = sorted(messages, key=lambda msg_time: msg_time['time'])
     messages = sorted_messages[0:MESSAGES_LIMIT]
-    entity = await client.get_entity(BOYS_ID)
+
     for message in messages:
         await client.send_message(entity=entity, message=message['msg'], schedule=message['time'] - timedelta(hours=3))
 
 
 toad_state_before = dict(toad_state)
 
-feed_the_toad()
-do_the_job()
+
+async def main():
+    await client.connect()
+    entity = await client.get_entity(BOYS_ID)
+    res = await client(functions.messages.GetScheduledHistoryRequest(
+        peer=entity,
+        hash=0
+    ))
+    scheduled_messages = res.messages
+    if scheduled_messages is None:
+        scheduled_messages = list()
+    scheduled_messages = sorted(scheduled_messages, key=lambda msg: msg.date)
+    await feed_the_toad(entity, scheduled_messages)
+    await do_the_job(entity, scheduled_messages)
+
+
+client.loop.run_until_complete(main())
 
 if not toad_state_before == toad_state:
     with open("toad_state.json", "w") as write_file:
