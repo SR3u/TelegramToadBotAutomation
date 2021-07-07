@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from telethon import TelegramClient
 from telethon import functions
 
-
 # Get it from https://my.telegram.org/
 API_ID = ''
 API_HASH = ''
