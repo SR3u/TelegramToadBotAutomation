@@ -1,7 +1,6 @@
-import json
-import pytz
 from datetime import datetime, timedelta
 
+import pytz
 from telethon import TelegramClient
 from telethon import functions
 
@@ -17,6 +16,7 @@ TOAD_OF_THE_DAY_PERIOD = timedelta(days=1)
 
 scheduled_messages_count = 0
 
+SAME_TYPE_MESSAGES_LIMIT = 2
 MESSAGES_LIMIT = 9
 
 client = TelegramClient('session_name', API_ID, API_HASH)
@@ -31,24 +31,26 @@ async def prepare_message(scheduled_messages, message, delay=timedelta(hours=1),
     next_time = datetime.now()
     if len(sch_msgs) > 0:
         next_time = sch_msgs[-1].date + delay
-    if time is None:
-        time = datetime.now()
-    time = localize(time)
-    next_time = localize(next_time)
-    if time >= next_time:
-        return [{'msg': message, 'time': time}]
+    if len(sch_msgs) <= SAME_TYPE_MESSAGES_LIMIT:
+        if time is None:
+            time = datetime.now()
+        time = localize(time)
+        next_time = localize(next_time)
+        if time >= next_time:
+            return [{'msg': message, 'time': time}]
+        else:
+            return [{'msg': message, 'time': next_time}]
     else:
-        return [{'msg': message, 'time': next_time}]
+        return []
 
 
 async def do_the_job(entity, scheduled_messages):
     messages = []
     # Job (dealer)
-    # time = datetime.today() + timedelta(minutes=2)
     job_messages = await prepare_message(scheduled_messages, 'работа крупье', DEALER_JOB_PERIOD)
     if len(job_messages) > 0:
         job_end_time = job_messages[0].get('time') + timedelta(hours=2, minutes=1)
-        job_messages.append(messages.append({'msg': 'завершить работу', 'time': job_end_time}))
+        job_messages.append({'msg': 'завершить работу', 'time': job_end_time})
     messages.extend(job_messages)
     return messages
 
