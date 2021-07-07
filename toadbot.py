@@ -21,10 +21,12 @@ MESSAGES_LIMIT = 9
 
 client = TelegramClient('session_name', API_ID, API_HASH)
 
+
 def localize(t):
     if t.tzinfo is None:
         return pytz.UTC.localize(t)
     return t
+
 
 async def prepare_message(scheduled_messages, message, delay=timedelta(hours=1), time=None):
     sch_msgs = list(filter(lambda msg: msg.message == message, scheduled_messages))
@@ -74,7 +76,8 @@ async def send_messages(entity, messages, scheduled_messages_count):
                 max_msgs = max_msgs + 1
         messages_to_send = sorted_messages[0:max_msgs]
         for message in messages_to_send:
-            await client.send_message(entity=entity, message=message['msg'], schedule=message['time'])#- timedelta(hours=3))
+            await client.send_message(entity=entity, message=message['msg'],
+                                      schedule=message['time'])  # - timedelta(hours=3))
 
 
 async def main():
