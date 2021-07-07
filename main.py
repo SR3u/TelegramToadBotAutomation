@@ -17,7 +17,7 @@ TOAD_OF_THE_DAY_PERIOD = timedelta(days=1)
 
 scheduled_messages_count = 0
 
-MESSAGES_LIMIT = 100
+MESSAGES_LIMIT = 9
 
 client = TelegramClient('session_name', API_ID, API_HASH)
 
@@ -37,7 +37,8 @@ async def prepare_message(scheduled_messages, message, delay=timedelta(hours=1),
     next_time = localize(next_time)
     if time >= next_time:
         return [{'msg': message, 'time': time}]
-    return []
+    else:
+        return [{'msg': message, 'time': next_time}]
 
 
 async def do_the_job(entity, scheduled_messages):
@@ -60,29 +61,37 @@ async def feed_the_toad(entity, scheduled_messages):
     return messages
 
 
-async def send_messages(messages, scheduled_messages_count):
+async def send_messages(entity, messages, scheduled_messages_count):
     messages = list(filter(lambda o: o is not None, messages))
-    sorted_messages = sorted(messages, key=lambda msg_time: msg_time['time'])
+    sorted_messages = list(sorted(messages, key=lambda msg_time: msg_time['time']))
     max_msgs = MESSAGES_LIMIT - scheduled_messages_count
-    messages_to_send = sorted_messages[0:max_msgs]
-    for message in messages_to_send:
-        await client.send_message(entity=entity, message=message['msg'], schedule=message['time'] - timedelta(hours=3))
+    if max_msgs > 0:
+        if len(sorted_messages) > max_msgs:
+            msg = sorted_messages[max_msgs]
+            if msg['msg'] == 'завершить работу':
+                max_msgs = max_msgs + 1
+        messages_to_send = sorted_messages[0:max_msgs]
+        for message in messages_to_send:
+            await client.send_message(entity=entity, message=message['msg'], schedule=message['time'])#- timedelta(hours=3))
 
 
 async def main():
-    await client.connect()
-    entity = await client.get_entity(BOYS_ID)
-    res = await client(functions.messages.GetScheduledHistoryRequest(
-        peer=entity,
-        hash=0
-    ))
-    scheduled_messages = res.messages
-    if scheduled_messages is None:
-        scheduled_messages = list()
-    scheduled_messages = sorted(scheduled_messages, key=lambda msg: msg.date)
-    messages = await feed_the_toad(entity, scheduled_messages)
-    messages.extend(await do_the_job(entity, scheduled_messages))
-    await send_messages(messages, len(scheduled_messages))
+    scheduled_messages_count = 0
+    while scheduled_messages_count < MESSAGES_LIMIT:
+        await client.connect()
+        entity = await client.get_entity(BOYS_ID)
+        res = await client(functions.messages.GetScheduledHistoryRequest(
+            peer=entity,
+            hash=0
+        ))
+        scheduled_messages = res.messages
+        if scheduled_messages is None:
+            scheduled_messages = list()
+        scheduled_messages_count = len(scheduled_messages)
+        scheduled_messages = sorted(scheduled_messages, key=lambda msg: msg.date)
+        messages = await feed_the_toad(entity, scheduled_messages)
+        messages.extend(await do_the_job(entity, scheduled_messages))
+        await send_messages(entity, messages, scheduled_messages_count)
 
 
 client.loop.run_until_complete(main())
