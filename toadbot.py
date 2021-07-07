@@ -14,8 +14,6 @@ FEED_TOAD_PERIOD = timedelta(hours=12, minutes=2)
 DEALER_JOB_PERIOD = timedelta(hours=8, minutes=5)
 TOAD_OF_THE_DAY_PERIOD = timedelta(days=1)
 
-scheduled_messages_count = 0
-
 SAME_TYPE_MESSAGES_LIMIT = 2
 MESSAGES_LIMIT = 9
 
