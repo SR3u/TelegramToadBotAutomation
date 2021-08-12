@@ -8,7 +8,8 @@ from telethon import functions
 API_ID = ''
 API_HASH = ''
 
-BOYS_ID = 1231044699
+# BOYS_ID = 1231044699
+BOYS_ID = -1001231044699
 
 FEED_TOAD_PERIOD = timedelta(hours=12, minutes=2)
 DEALER_JOB_PERIOD = timedelta(hours=8, minutes=5)
@@ -92,8 +93,11 @@ async def main():
             scheduled_messages = list()
         scheduled_messages_count = len(scheduled_messages)
         scheduled_messages = sorted(scheduled_messages, key=lambda msg: msg.date)
-        messages = await feed_the_toad(entity, scheduled_messages)
+        messages = []
+        messages.extend(await feed_the_toad(entity, scheduled_messages))
         messages.extend(await do_the_job(entity, scheduled_messages))
+        if len(messages) == 0:
+            return
         await send_messages(entity, messages, scheduled_messages_count)
 
 
